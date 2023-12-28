@@ -18,7 +18,9 @@ package v1alpha1
 
 import (
 	"strings"
+	unsafe "unsafe"
 
+	corev1 "k8s.io/api/core/v1"
 	apimachineryconversion "k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/utils/pointer"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
@@ -489,6 +491,27 @@ func Convert_v1alpha2_ContainerSpec_To_v1alpha1_ContainerSpec(in *operatorv1.Con
 	out.Resources = in.Resources
 	out.Command = in.Command
 
+	return nil
+}
+
+func Convert_v1alpha2_DeploymentSpec_To_v1alpha1_DeploymentSpec(in *operatorv1.DeploymentSpec, out *DeploymentSpec, s apimachineryconversion.Scope) error {
+	out.Replicas = (*int)(unsafe.Pointer(in.Replicas))
+	out.NodeSelector = *(*map[string]string)(unsafe.Pointer(&in.NodeSelector))
+	out.Tolerations = *(*[]corev1.Toleration)(unsafe.Pointer(&in.Tolerations))
+	out.Affinity = (*corev1.Affinity)(unsafe.Pointer(in.Affinity))
+	if in.Containers != nil {
+		in, out := &in.Containers, &out.Containers
+		*out = make([]ContainerSpec, len(*in))
+		for i := range *in {
+			if err := Convert_v1alpha2_ContainerSpec_To_v1alpha1_ContainerSpec(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Containers = nil
+	}
+	out.ServiceAccountName = in.ServiceAccountName
+	out.ImagePullSecrets = *(*[]corev1.LocalObjectReference)(unsafe.Pointer(&in.ImagePullSecrets))
 	return nil
 }
 
